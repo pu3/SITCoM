@@ -1,0 +1,26 @@
+LICENSE
+README.md
+setup.py
+sitcom/README.md
+sitcom/__init__.py
+sitcom/__main__.py
+sitcom/sfit.py
+sitcom/sirgraf.py
+sitcom/st1.py
+sitcom/st2.py
+sitcom.egg-info/PKG-INFO
+sitcom.egg-info/SOURCES.txt
+sitcom.egg-info/dependency_links.txt
+sitcom.egg-info/requires.txt
+sitcom.egg-info/top_level.txt
+sitcom/data/Sine_curve.png
+sitcom/data/__init__.py
+sitcom/data/black.png
+sitcom/data/white.png
+sitcom/font/lato/Lato-Semibold.ttf
+sitcom/font/lato/SIL Open Font License.txt
+sitcom/icon/__init__.py
+sitcom/icon/cme.ico
+sitcom/icon/cme.png
+sitcom/load/__init__.py
+sitcom/load/sitcom.gif

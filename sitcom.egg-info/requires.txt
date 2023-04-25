@@ -1,0 +1,7 @@
+PyQt5<6.0.0,>=5.15.0
+opencv-python
+numpy>=1.21.0
+matplotlib>=3.5.3
+scikit-image>=0.19.3
+sunpy>=4.0.5
+astropy>=5.1
