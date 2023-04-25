@@ -8,6 +8,10 @@ You can install the `sitcom` package using pip:
 ```
 pip install sitcom
 ```
+For Linux users, existence of the "xcb" library is essential. That can be installed with :
+```
+sudo apt-get install libxcb-xinerama0
+```
 
 ### Usage
 
