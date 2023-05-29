@@ -11,7 +11,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from astropy.visualization import ZScaleInterval
 from astropy.visualization import MinMaxInterval
-import cv2,os,site,sys
+from astropy.io import fits
+import cv2,os,sys
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
@@ -19,8 +20,8 @@ import sitcom.sirgraf as sf
 import sitcom.sfit as sn
 from sitcom.st2 import Ui_SWindow
 
-mp.use('Qt5Agg')
 mp.rcParams['font.family'] = 'monospace'
+
 
 class Ui_SecondWindow(object):
     def setupUi(self, SecondWindow):
@@ -32,15 +33,14 @@ class Ui_SecondWindow(object):
         self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 541, 501))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
-        conda_env=os.environ.get('CONDA_DEFAULT_ENV')
+        #conda_env=os.environ.get('CONDA_DEFAULT_ENV')
         site_packages_path=None
-        if conda_env:
-            cnpath=os.path.join(os.environ['CONDA_PREFIX'],'lib','python{}'.format(sys.version[:3]),'site-packages')
-            if os.path.exists(cnpath):
-              site_packages_path = cnpath
-        else:
-            site_packages_path = site.getusersitepackages()
-        self.sitep=site_packages_path
+        current_path=os.path.dirname(os.path.realpath(__file__))
+        self.sitep=current_path
+        self.pmovie = QtWidgets.QPushButton(self.centralwidget)
+        self.pmovie.setGeometry(QtCore.QRect(620, 20, 81, 21))
+        self.pmovie.setObjectName("pmovie")
+        #############Plot##########################################
         self.plot = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.plot.setContentsMargins(0, 0, 0, 0)
         self.plot.setObjectName("plot")
@@ -62,9 +62,7 @@ class Ui_SecondWindow(object):
         self.toolbar.addWidget(self.plot_button)
         self.plot.addWidget(self.toolbar)
         self.plot.addWidget(self.canvas)
-        self.pmovie = QtWidgets.QPushButton(self.centralwidget)
-        self.pmovie.setGeometry(QtCore.QRect(620, 20, 81, 21))
-        self.pmovie.setObjectName("pmovie")
+        ##################Kinematic########################
         self.doubleSpinBox = QtWidgets.QDoubleSpinBox(self.centralwidget)
         self.doubleSpinBox.setGeometry(QtCore.QRect(660, 130, 71, 31))
         self.doubleSpinBox.setObjectName("doubleSpinBox")
@@ -83,17 +81,11 @@ class Ui_SecondWindow(object):
         self.htp = QtWidgets.QPushButton(self.centralwidget)
         self.htp.setGeometry(QtCore.QRect(590, 170, 191, 25))
         self.htp.setObjectName("htp")
-        self.oscillation = QtWidgets.QPushButton(self.centralwidget)
-        self.oscillation.setGeometry(QtCore.QRect(600, 310, 141, 25))
-        self.oscillation.setObjectName("oscillation")
-        self.dtp = QtWidgets.QPushButton(self.centralwidget)
-        self.dtp.setGeometry(QtCore.QRect(580, 360, 201, 25))
-        self.dtp.setObjectName("dtp")
         self.label_fit1 = QtWidgets.QLabel(self.centralwidget)
-        self.label_fit1.setGeometry(QtCore.QRect(590, 220, 31, 17))
+        self.label_fit1.setGeometry(QtCore.QRect(570, 220, 31, 20))
         self.label_fit1.setObjectName("label_fit1")
         self.comboBox_htp = QtWidgets.QComboBox(self.centralwidget)
-        self.comboBox_htp.setGeometry(QtCore.QRect(620, 220, 86, 20))
+        self.comboBox_htp.setGeometry(QtCore.QRect(605, 220, 101, 20))
         self.comboBox_htp.setObjectName("comboBox_htp")
         self.comboBox_htp.addItem("")
         self.comboBox_htp.addItem("")
@@ -101,6 +93,27 @@ class Ui_SecondWindow(object):
         self.htp_ok.setGeometry(QtCore.QRect(710, 220, 41, 21))
         self.theta_ok = QtWidgets.QPushButton(self.centralwidget)
         self.theta_ok.setGeometry(QtCore.QRect(740, 130, 41, 31))
+        ##############Oscillations############################
+        self.oscillation = QtWidgets.QPushButton(self.centralwidget)
+        self.oscillation.setGeometry(QtCore.QRect(600, 280, 141, 25))
+        self.oscillation.setObjectName("oscillation")
+        self.dtp = QtWidgets.QPushButton(self.centralwidget)
+        self.dtp.setGeometry(QtCore.QRect(580, 330, 201, 25))
+        self.dtp.setObjectName("dtp")
+        self.label_fit2 = QtWidgets.QLabel(self.centralwidget)
+        self.label_fit2.setGeometry(QtCore.QRect(600, 410, 31, 17))
+        self.label_fit2.setObjectName("label_fit2")
+        self.label_xt = QtWidgets.QLabel(self.centralwidget)
+        self.label_xt.setGeometry(QtCore.QRect(550, 366, 101, 31))
+        self.label_xt.setObjectName("label_xt")
+        self.comboBox_savext = QtWidgets.QComboBox(self.centralwidget)
+        self.comboBox_savext.setGeometry(QtCore.QRect(650, 370, 86, 25))
+        self.comboBox_savext.setObjectName("comboBox_savext")
+        self.comboBox_savext.addItem("")
+        self.comboBox_savext.addItem("")
+        self.savext_ok = QtWidgets.QPushButton(self.centralwidget)
+        self.savext_ok.setGeometry(QtCore.QRect(750, 370, 41, 21))
+        self.savext_ok.setObjectName("savext_ok")
         self.comboBox_dtp = QtWidgets.QComboBox(self.centralwidget)
         self.comboBox_dtp.setGeometry(QtCore.QRect(630, 410, 101, 20))
         self.comboBox_dtp.setObjectName("comboBox_dtp")
@@ -108,6 +121,7 @@ class Ui_SecondWindow(object):
         self.comboBox_dtp.addItem("")
         self.dtp_ok = QtWidgets.QPushButton(self.centralwidget)
         self.dtp_ok.setGeometry(QtCore.QRect(740, 410, 41, 21))
+        ###################Variable declaration#########################################
         self.s=['blank']
         self.t=[]
         self.sx,self.sy=[],[]
@@ -121,9 +135,7 @@ class Ui_SecondWindow(object):
         self.avg,self.mask=None,None
         self.ima1,self.colorm=None,None
         self.date,self.time=None,None
-        self.label_fit2 = QtWidgets.QLabel(self.centralwidget)
-        self.label_fit2.setGeometry(QtCore.QRect(600, 410, 31, 17))
-        self.label_fit2.setObjectName("label_fit2")
+        ########################File###################################
         SecondWindow.setCentralWidget(self.centralwidget)
         self.fnamm=QtWidgets.QLineEdit(self.centralwidget)
         self.fnamm.setGeometry(QtCore.QRect(620, 50, 113, 25))
@@ -146,7 +158,7 @@ class Ui_SecondWindow(object):
         self.menuTheme.addAction(self.actionLight)
         self.menuTheme.addAction(self.actionDark)
         self.menubar.addAction(self.menuTheme.menuAction())
-
+        
         self.retranslateUi(SecondWindow)
         QtCore.QMetaObject.connectSlotsByName(SecondWindow)
 
@@ -199,12 +211,20 @@ class Ui_SecondWindow(object):
         self.clear_button.setEnabled(False)
         self.plot_button.setText(_translate("SecondWindow", "Plot"))
         self.plot_button.setEnabled(False)
+        self.label_xt.setText(_translate("SecondWindow", "Save x-t map:"))
+        self.comboBox_savext.setItemText(0, _translate("SecondWindow", "fits"))
+        self.comboBox_savext.setItemText(1, _translate("SecondWindow", "sav"))
+        self.savext_ok.setText(_translate("SecondWindow", "OK"))
+        self.savext_ok.clicked.connect(self.DTP_save)
+        self.savext_ok.hide()
+        self.label_xt.hide()
+        self.comboBox_savext.hide()
         self.menuTheme.setTitle(_translate("SecondWindow", "Theme"))
         self.actionLight.setText(_translate("SecondWindow", "Light"))
         self.actionDark.setText(_translate("SecondWindow", "Dark"))
 
     def light(self,SecondWindow):
-        cw=os.path.join(self.sitep,'sitcom/data/white.png')
+        cw=os.path.join(self.sitep,'data','white.png')
         SecondWindow.setStyleSheet("QMainWindow{border-image: url("+cw+"); background-repeat:no-repeat; background-position: center;}")
         self.figure.set_facecolor('white')
         mp.rcParams.update({'text.color' : "black",'axes.labelcolor' : "black",'axes.edgecolor':"black",'axes.facecolor':"white",'xtick.color':"black",'ytick.color':"black"})
@@ -215,7 +235,7 @@ class Ui_SecondWindow(object):
         elif self.t[-1]=='HTP':
           self.htp.click()
     def dark(self,SecondWindow):
-        cw=os.path.join(self.sitep,'sitcom/data/black.png')
+        cw=os.path.join(self.sitep,'data','black.png')
         SecondWindow.setStyleSheet("QMainWindow{border-image: url("+cw+"); background-repeat:no-repeat; background-position: center;}QLabel{color:white;}")
         self.figure.patch.set_facecolor('black')
         mp.rcParams.update({'text.color' : "white",'axes.labelcolor' : "white",'axes.edgecolor':"white",'axes.facecolor':"black",'xtick.color':"white",'ytick.color':"white"})
@@ -245,8 +265,10 @@ class Ui_SecondWindow(object):
         theta=self.doubleSpinBox.value()
         self.ax1.plot([0,np.max(self.y)*np.cos(np.radians(theta+90))],[0,np.max(self.y)*np.sin(np.radians(theta+90))],color='turquoise',linestyle=':')
         self.theta_ok.setChecked(False)
-      cb=self.figure.colorbar(im,cax=cax,extend='both')
-      cb.ax.set_ylim(bottom=0)
+      else: 
+        pass
+      cb=self.figure.colorbar(im,cax=cax,extend='both',format='')
+      cb.set_ticks([])
       patch = pa.Circle((0,0), radius=np.max(self.y),transform=self.ax1.transData)
       im.set_clip_path(patch)
       self.ax1.add_patch(circ2)
@@ -257,15 +279,17 @@ class Ui_SecondWindow(object):
       self.ax1.set_ylabel('Solar Y (R$_{\odot}$)')
       def animate(i):
         vmin,vmax=interval.get_limits(self.ima1[i])
-        im=self.ax1.imshow(cv2.medianBlur(self.ima1[i],5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
+        im.set_data(cv2.medianBlur(self.ima1[i],5))
+        im.set_clim(vmin,vmax)
         patch = pa.Circle((0,0), radius=np.max(self.y),transform=self.ax1.transData)
         im.set_clip_path(patch)
         self.ax1.set_title('Date: ' + self.date + ' Time: ' + self.time[i])
         self.ax1.set_facecolor("black")
-        return self.ax1
-      self.ani = animation.FuncAnimation(self.figure, animate, frames=len(self.ima1),blit=False)
+        return im,
+      self.ani = animation.FuncAnimation(self.canvas.figure, animate, frames=len(self.ima1),interval=90)
       plt.tight_layout()
       self.canvas.draw()
+      self.canvas.figure.tight_layout()
     def tpause(self):
       self.ani.event_source.stop()
     def tplay(self):
@@ -287,6 +311,7 @@ class Ui_SecondWindow(object):
         self.doubleSpinBox.show()
         self.htp.show()
         self.htp_ok.show()
+        self.label_fit1.show()
         self.comboBox_htp.show()
         self.theta_ok.setCheckable(True)
         self.theta_ok.setChecked(False)
@@ -388,8 +413,8 @@ class Ui_SecondWindow(object):
             s1.append(np.rot90(w,angle))
         s2=cv2.hconcat(s1)
         dimg=cv2.bilateralFilter(s2,3, 50, 50)
-        interval=ZScaleInterval()
-        vmin,vmax=interval.get_limits(dimg)
+        interval=MinMaxInterval()
+        vmin,vmax=interval.get_limits(self.ima1[1])
         t,t_min=[],[]
         for i in range(len(self.time)):
           sp=self.time[i].split(':')
@@ -401,8 +426,8 @@ class Ui_SecondWindow(object):
         t1=np.linspace(t[0],t[-1],dimg.shape[1])
         #cm=plt.cm.get_cmap('soholasco2')
         #rcm=cm.reversed()
-        self.ax.imshow(dimg,extent=[t_min[0],t_min[-1],self.y[np.where(self.y>=0)][0],self.y[-1]],vmin=vmin,vmax=vmax,cmap=self.colorm,aspect='auto')
-        yx=self.y[np.where(self.y>=1)]
+        self.ax.imshow(dimg,extent=[t_min[0],t_min[-1],self.y[np.where(self.y>=0)][0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax,aspect='auto')
+        yx=self.y[np.where(self.y>=self.R_i)]
         self.ax.set_ylim(yx[0],self.y[-1])
         self.ax.axhline(1,linestyle=':',color='black')
         self.ax.axhline(self.R_i,linestyle='-.',color='black')
@@ -420,49 +445,50 @@ class Ui_SecondWindow(object):
             retval = msg.exec_()
             ex,ey=[],[]
             def mouse_event(event):
-              ex.append(event.xdata)
-              ey.append(event.ydata)
-              temp_point = self.ax.scatter(ex, ey, color='black')
-              if len(ex) == 2:
-                temp_points = self.ax.scatter(ex, ey, color='black')
-                self.ax.plot(ex,ey,color='black',linestyle=':')
-                msg = QtWidgets.QMessageBox()
-                msg.setStyleSheet("color:'black';")
-                msg.setIcon(QtWidgets.QMessageBox.Information)
-                msg.setText("Confirm the fit?")
-                msg.setWindowTitle("Confirm line!")
-                msg.setStandardButtons(QtWidgets.QMessageBox.Ok|QtWidgets.QMessageBox.Retry)
-                if msg.exec_() == QtWidgets.QMessageBox.Retry:
-                    ex.clear()
-                    ey.clear()
-                    self.ax.lines.clear()
-                    temp_point.remove()
-                    temp_points.remove()
-                else:
-                    self.figure.clear()
+              if self.toolbar.mode!= 'zoom rect':
+                if event.inaxes==self.ax:
+                  ex.append(event.xdata)
+                  ey.append(event.ydata)
+                  self.ax.plot(ex, ey, color='black',marker='o',linestyle='None',markersize=4)
+                  if len(ex) == 2:
+                    temp_points = self.ax.scatter(ex, ey, color='black')
+                    self.ax.plot(ex,ey,color='black',linestyle=':')
+                    msg = QtWidgets.QMessageBox()
+                    msg.setStyleSheet("color:'black';")
+                    msg.setIcon(QtWidgets.QMessageBox.Information)
+                    msg.setText("Confirm the fit?")
+                    msg.setWindowTitle("Confirm line!")
+                    msg.setStandardButtons(QtWidgets.QMessageBox.Ok|QtWidgets.QMessageBox.Retry)
+                    if msg.exec_() == QtWidgets.QMessageBox.Retry:
+                      ex.clear()
+                      ey.clear()
+                      self.ax.lines.clear()
+                      temp_points.remove()
+                    else:
+                      self.figure.clear()
+                      self.canvas.mpl_disconnect(cid)
+                      self.ax=self.canvas.figure.add_subplot(111)
+                      self.ax.plot(ex,ey,color='black')
+                      self.ax.set_ylim(0,self.y[-1])
+                      self.ax.set_xlim(0,t_min[-1])
+                      self.ax.axhline(1,linestyle=':',color='red')
+                      self.ax.axhline(self.R_i,linestyle='-.',color='red')
+                      self.ax.set_ylabel('Height (R$_{\odot}$)')
+                      self.ax.set_xlabel('Time(min)')
+                      self.ax.set_title('Start Time ('+self.date+'T'+self.time[0]+')')
+                      self.ax.grid()
+                      velocity=np.ceil((ey[1]-ey[0])*695700/(ex[1]*60-ex[0]*60))
+                      self.ax.text(1,np.mean([1,self.R_i]),'Velocity ='+str(velocity)+r' km s$^{-1}$')
+                      self.figure.tight_layout()
+                  elif len(ex)>2:
+                    msg = QtWidgets.QMessageBox()
+                    msg.setStyleSheet("color:'black';")
+                    msg.setIcon(QtWidgets.QMessageBox.Warning)
+                    msg.setText("Please click only 2 points for Linear fit!")
+                    msg.setWindowTitle("Warning!")
+                    msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+                    retval = msg.exec_()
                     self.canvas.mpl_disconnect(cid)
-                    self.ax=self.canvas.figure.add_subplot(111)
-                    self.ax.plot(ex,ey,color='black')
-                    self.ax.set_ylim(0,self.y[-1])
-                    self.ax.set_xlim(0,t_min[-1])
-                    self.ax.axhline(1,linestyle=':',color='red')
-                    self.ax.axhline(self.R_i,linestyle='-.',color='red')
-                    self.ax.set_ylabel('Height (R$_{\odot}$)')
-                    self.ax.set_xlabel('Time(min)')
-                    self.ax.set_title('Start Time ('+self.date+'T'+self.time[0]+')')
-                    self.ax.grid()
-                    velocity=np.ceil((ey[1]-ey[0])*695700/(ex[1]*60-ex[0]*60))
-                    self.ax.text(0,np.mean([1,self.R_i]),'Velocity ='+str(velocity)+r' km s$^{-1}$')
-                    self.figure.tight_layout()
-              elif len(ex)>2:
-                msg = QtWidgets.QMessageBox()
-                msg.setStyleSheet("color:'black';")
-                msg.setIcon(QtWidgets.QMessageBox.Warning)
-                msg.setText("Please click only 2 points for Linear fit!")
-                msg.setWindowTitle("Warning!")
-                msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-                retval = msg.exec_()
-                self.canvas.mpl_disconnect(cid)
             cid = self.canvas.mpl_connect('button_press_event', mouse_event)
         elif self.comboBox_htp.currentText()=='Quadratic':
           msg = QtWidgets.QMessageBox()
@@ -481,9 +507,7 @@ class Ui_SecondWindow(object):
             if len(ec)==1:
                 self.ax.set_xlim(ec[0][0], er[0][0])
                 self.ax.set_ylim(ec[0][1], er[0][1])
-                qx.clear()
-                qy.clear()
-                #rs.set_active(False)
+                rs.set_active(False)
             elif len(ec)>1:
                 rs.set_active(False)
                 ec.clear()
@@ -492,10 +516,10 @@ class Ui_SecondWindow(object):
           rs = mp.widgets.RectangleSelector(self.ax, line_select_callback,drawtype='box', useblit=False,props=props, button=[1],minspanx=5, minspany=5, spancoords='pixels',interactive=False)
           qx,qy=[],[]
           def qmouse_event(event1):
-            if event1.inaxes ==self.ax:
+            if event1.inaxes ==self.ax and not rs.active:
               qx.append(event1.xdata)
               qy.append(event1.ydata)
-              #temp_points1=self.ax.scatter(qx, qy, color='black',s=0.7)
+              self.ax.plot(qx, qy, color='black',marker='o',linestyle='None',markersize=3)
               if len(qx) == 5:
                 #temp_points1.remove()
                 temp_points=self.ax.scatter(qx,qy,color='black',s=0.7)
@@ -513,25 +537,28 @@ class Ui_SecondWindow(object):
                 OkBtn = msg.addButton('Ok', msg.ActionRole)
                 msg.exec_()
                 if msg.clickedButton() == RetryBtn:
-                  self.htp.click()
                   qx.clear()
                   qy.clear()
                   self.ax.lines[-1].remove()
+                  self.ax.lines.clear()
                   temp_points.remove()
+                  rs.set_active(True)
+                  self.htp.click()
                 elif msg.clickedButton() == RetryFitBtn:
                   qx.clear()
                   qy.clear()
-                  self.ax.lines[-1].remove()
+                  self.ax.lines.clear()
                   temp_points.remove()
                 elif msg.clickedButton() == OkBtn:
                   self.figure.clear()
                   self.canvas.mpl_disconnect(qcid)
                   self.ax=self.canvas.figure.add_subplot(111)
                   yprime=np.gradient(Y_,X_)
+                  v_average=np.mean(yprime)*695700/60
                   ypprime=np.gradient(yprime,X_)
-                  acc = np.mean(ypprime)*695700*0.28
+                  acc = np.mean(ypprime)*695700*0.277778
                   self.ax.plot(X_,Y_,color='black')
-                  self.ax.text(0, np.mean([1, self.R_i]), 'Acceleration =' + str(np.ceil(acc)) + r' m s$^{-2}$')
+                  self.ax.text(1, np.mean([1, self.R_i]), 'Acceleration =' + str(np.ceil(acc)) + r' m s$^{-2}$, V$_{avg}$ = '+str(np.ceil(v_average))+r' km s$^{-1}$')
                   self.ax.set_ylim(0.8,self.y[-1])
                   self.ax.set_xlim(t_min[0],t_min[-1])
                   self.ax.axhline(1,linestyle=':',color='red')
@@ -559,6 +586,9 @@ class Ui_SecondWindow(object):
       self.pause_button.setEnabled(False)
       self.play_button.hide()
       self.pause_button.hide()
+      self.label_xt.show()
+      self.comboBox_savext.show()
+      self.savext_ok.show()
       a1,b1=[self.sx[0],self.sy[0]],[self.sx[1],self.sy[1]]
       hgt1=b1[0]-a1[0]
       hgt2=b1[1]-a1[1]
@@ -592,18 +622,20 @@ class Ui_SecondWindow(object):
         w=cv2.warpPerspective(self.ima1[j], M, (width, height))
         s1.append(np.rot90(w,a))
       s3=cv2.hconcat(s1)
-      xt=cv2.bilateralFilter(s3,3, 50, 50)
+      self.xt=cv2.bilateralFilter(s3,3, 50, 50)
+      self.plot_button.setEnabled(False)
       #cmap = plt.get_cmap('soholasco2')
       self.figure.clear()
       self.ax=self.canvas.figure.add_subplot(111)
       interval=MinMaxInterval()
-      vmin,vmax=interval.get_limits(xt)
-      self.ax.imshow(xt,cmap=self.colorm,aspect='auto',vmin=vmin,vmax=vmax)
+      vmin,vmax=interval.get_limits(self.xt)
+      xp=self.ax.imshow(self.xt,cmap=self.colorm,aspect='auto',vmin=0.11*vmin,vmax=0.11*vmax)
       self.ax.set_xlabel('Frame number')
       self.ax.set_ylabel('Slit Length (Pixels)')
       plt.tight_layout()
       self.canvas.draw()
       self.canvas.figure.tight_layout()
+      self.ac,self.ar=[],[]
       if self.comboBox_dtp.currentText()=='Automatic':
           self.ax.set_title('Drag the area to crop !')
           self.canvas.figure.tight_layout()
@@ -622,7 +654,7 @@ class Ui_SecondWindow(object):
                     self.ini_guess = [self.ui.p0SpinBox.value(), self.ui.p1SpinBox.value(), self.ui.p2SpinBox.value(),
                                       self.ui.p3SpinBox.value(), self.ui.p4SpinBox.value(), self.ui.p5SpinBox.value()]
                     self.ax.lines.clear()
-                    xt_tr=xt[int(ac[0][1]):int(ar[0][1]),int(ac[0][0]):int(ar[0][0])]
+                    xt_tr=self.xt[int(ac[0][1]):int(ar[0][1]),int(ac[0][0]):int(ar[0][0])]
                     sz = np.shape(xt_tr)
                     xxx = np.arange(0,sz[1],dtype='int')
                     coeff,sgm = sn.xt_gauss_peaks(xt_tr)
@@ -632,7 +664,7 @@ class Ui_SecondWindow(object):
                     #self.ax.legend(loc="upper right")
                     self.canvas.figure.tight_layout()
                 self.ui.pok.clicked.connect(lambda: sine(self.ac,self.ar))
-                xt_tr=xt[int(self.ac[0][1]):int(self.ar[0][1]),int(self.ac[0][0]):int(self.ar[0][0])]
+                xt_tr=self.xt[int(self.ac[0][1]):int(self.ar[0][1]),int(self.ac[0][0]):int(self.ar[0][0])]
                 sz = np.shape(xt_tr)
                 xxx = np.arange(0,sz[1],dtype='int')
                 coeff,sgm = sn.xt_gauss_peaks(xt_tr)
@@ -646,7 +678,7 @@ class Ui_SecondWindow(object):
                   self.figure.clear()
                   self.ax=self.canvas.figure.add_subplot(111)
                   self.window.close()
-                  xt_tr=xt[int(ac[0][1]):int(ar[0][1]),int(ac[0][0]):int(ar[0][0])]
+                  xt_tr=self.xt[int(ac[0][1]):int(ar[0][1]),int(ac[0][0]):int(ar[0][0])]
                   sz = np.shape(xt_tr)
                   xxx = np.arange(0,sz[1],dtype='int')
                   coeff,sgm = sn.xt_gauss_peaks(xt_tr)
@@ -655,7 +687,7 @@ class Ui_SecondWindow(object):
                   self.ax.set_ylim(ar[0][1],ac[0][1])
                   fpath=os.path.expanduser('~')
                   cnm=os.path.join(fpath,self.date)
-                  np.savetxt(cnm+'_auto_param.csv',[self.ini_guess[:]],header='p0,p1,p2,p3,p4,p5',delimiter=',', fmt='%s')
+                  np.savetxt(cnm+'_auto_param.csv',np.asarray([[np.round(sinp[0],decimals=3),np.round(sinp[1],decimals=3),np.round(sinp[2],decimals=3),np.round(sinp[3],decimals=3),np.round(sinp[4],decimals=3),np.round(sinp[5],decimals=3)]]),header='p0,p1,p2,p3,p4,p5',delimiter=',', fmt='%s')
                   self.ax.plot(xxx + int(ac[0][0]),sn.mysine_decay(xxx, sinp[0], sinp[1], sinp[2], sinp[3], sinp[4], sinp[5]) + int(ac[0][1]), c='navy')
                   self.ax.set_ylabel('Slit_length( Pixels)')
                   self.ax.set_xlabel('Frame Number')
@@ -701,6 +733,7 @@ class Ui_SecondWindow(object):
              self.ui.setupUi(self.window)
              def fit():
               self.window.show()
+              self.plot_button.setEnabled(True)
               lid = self.canvas.mpl_connect('button_press_event', qmouse_event)
               self.ini_m = [self.ui.p0SpinBox.value(), self.ui.p1SpinBox.value(), self.ui.p2SpinBox.value(),self.ui.p3SpinBox.value(), self.ui.p4SpinBox.value(), self.ui.p5SpinBox.value()]
               sinp,sind = curve_fit(sn.mysine_decay,np.int0(self.lx),self.ly,p0=self.ini_m)
@@ -722,13 +755,16 @@ class Ui_SecondWindow(object):
            self.figure.clear()
            self.ax=self.canvas.figure.add_subplot(111)
            self.window.close()
-           sinp,sind = curve_fit(sn.mysine_decay,np.int0(self.lx),self.ly,p0=self.ini_m)
+           
+           sinp,sind = curve_fit(sn.mysine_decay,np.int0(lx),ly,p0=self.ini_m)
            self.ax.grid()
-           self.ax.plot(np.int0(self.lx),sn.mysine_decay(np.int0(self.lx),sinp[0],sinp[1],sinp[2],sinp[3],sinp[4],sinp[5]),c='navy')
+           self.ax.plot(np.int0(lx),sn.mysine_decay(np.int0(lx),*sinp),c='navy')
+           self.ax.axhline(sinp[0])
+           #self.ax.axvline(p1)
            col1=['p0','p1','p2','p3','p4','p5']
            fpath=os.path.expanduser('~')
            cnm=os.path.join(fpath,self.date)
-           np.savetxt(cnm+'_manual_param.csv',[self.ini_m[:]],header='p0,p1,p2,p3,p4,p5',delimiter=',', fmt='%s')
+           np.savetxt(cnm+'_manual_param.csv',np.asarray([[np.round(sinp[0],decimals=3),np.round(sinp[1],decimals=3),np.round(sinp[2],decimals=3),np.round(sinp[3],decimals=3),np.round(sinp[4],decimals=3),np.round(sinp[5],decimals=3)]]),header='p0,p1,p2,p3,p4,p5',delimiter=',', fmt='%s')
            self.ax.set_ylabel('Slit_length( Pixels)')
            self.ax.set_xlabel('Frame Number')
            self.ax.set_ylim(self.ax.get_ylim()[::-1])
@@ -739,10 +775,26 @@ class Ui_SecondWindow(object):
            msg.setWindowTitle("Saved!")
            msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
            retval = msg.exec_()
-        self.plot_button.setEnabled(True)
-        self.plot_button.clicked.connect(lambda: plot(self.lx,self.ly))
-
-
+        self.plot_button.setEnabled(True)     
+        self.plot_button.clicked.connect(lambda: plot(np.array(self.lx)-self.ax.get_xlim()[0],-self.ax.get_ylim()[1]+np.array(self.ly)))
+    def DTP_save(self):
+      fp=os.path.expanduser('~')
+      cnm=os.path.join(fp,self.date)
+      if self.comboBox_savext.currentText()=='fits':
+        im = fits.PrimaryHDU(self.xt)
+        im.writeto(cnm+'_XT.fits',overwrite=True)
+      elif self.comboBox_savext.currentText()=='sav':
+        np.save(cnm+'.npy', self.xt)
+        img_from_file = np.load(cnm+'.npy')
+        np.savetxt(cnm+'_XT.sav', img_from_file)
+        os.remove(cnm+'.npy')
+      msg = QtWidgets.QMessageBox()
+      msg.setStyleSheet("color:'black';")
+      msg.setIcon(QtWidgets.QMessageBox.Information)
+      msg.setText("The XT map is saved in "+fp)
+      msg.setWindowTitle("Saved!")
+      msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+      retval = msg.exec_()
 
 
 

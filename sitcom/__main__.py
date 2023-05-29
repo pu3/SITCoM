@@ -12,40 +12,21 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import numpy as np
 import glob,os,cv2,platform
-import time,sys,site,shutil
+import time,sys,threading
 import sitcom.sirgraf as sf
 
 from astropy.io import fits
 from astropy.visualization import ZScaleInterval
 
-if platform.system()=='Windows':
-    import moviepy.editor as mpe
 
-mp.use('Qt5Agg')
 mp.rcParams['font.family'] = 'monospace'
 
 from sitcom.st1 import Ui_SecondWindow
-
-conda_env=os.environ.get('CONDA_DEFAULT_ENV')
-site_packages_path=None
-if conda_env:
-    cnpath=os.path.join(os.environ['CONDA_PREFIX'],'lib','python{}'.format(sys.version[:3]),'site-packages')
-    if os.path.exists(cnpath):
-        site_packages_path = cnpath
-else:
-    site_packages_path = site.getusersitepackages()
-ft=os.path.join(site_packages_path,'cv2/qt/plugins')
-if os.path.exists(ft):
-    shutil.rmtree(ft)
-    #gc.collect()
-    if os.path.exists(ft):
-        os.rmdir(ft)
-else:
-    pass
-
+from sitcom.st3 import Ui_SaveWindow
 
 import warnings
 warnings.filterwarnings("ignore")
+
 class Load_Window(QtWidgets.QSplashScreen):
     def __init__(self, movie, parent=None):
         movie.jumpToFrame(0)
@@ -64,26 +45,19 @@ class Ui_MainWindow(object):
         MainWindow.setObjectName("MainWindow")
         MainWindow.setFixedWidth(1000)
         MainWindow.setFixedHeight(550)
-        conda_env=os.environ.get('CONDA_DEFAULT_ENV')
-        site_packages_path=None
-        if conda_env:
-              cnpath=os.path.join(os.environ['CONDA_PREFIX'],'lib','python{}'.format(sys.version[:3]),'site-packages')
-              if os.path.exists(cnpath):
-                 site_packages_path = cnpath
-        else:
-              site_packages_path = site.getusersitepackages()
-        self.sitep=site_packages_path
+        current_path=os.path.dirname(os.path.realpath(__file__))
+        self.sitep=current_path
         icon = QtGui.QIcon()
-        ci=os.path.join(self.sitep,'sitcom/icon/cme.png')
+        ci=os.path.join(self.sitep,'icon','cme.png')
         icon.addPixmap(QtGui.QPixmap(ci), QtGui.QIcon.Normal, QtGui.QIcon.On)
         MainWindow.setWindowIcon(icon)
-        MainWindow.setIconSize(QtCore.QSize(40, 30))
+        MainWindow.setIconSize(QtCore.QSize(30, 30))
         QtGui.QFontDatabase.removeAllApplicationFonts()
-        cf=os.path.join(self.sitep,'sitcom/font/lato/Lato-Semibold.ttf')
+        cf=os.path.join(self.sitep,'font','lato','Lato-Semibold.ttf')
         QtGui.QFontDatabase.addApplicationFont(cf)
         font = QtGui.QFont('Lato-SemiBold', 10)
-        
-        font.setWeight(50)
+        font.setWeight(40)
+        MainWindow.setFont(font)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         #########################################################
@@ -195,6 +169,7 @@ class Ui_MainWindow(object):
         self.GammaSlider.setOrientation(QtCore.Qt.Horizontal)
         self.GammaSlider.setTickPosition(QtWidgets.QSlider.TicksBelow)
         self.GammaSlider.setObjectName("MinSlider_2")
+        self.GammaSlider.valueChanged.connect(self.Mov)
         self.gamma = QtWidgets.QLabel(self.groupBox_scale_2)
         self.gamma.setGeometry(QtCore.QRect(20, 50, 71, 20))
         self.gamma.setObjectName("Min_2")
@@ -210,51 +185,15 @@ class Ui_MainWindow(object):
         self.groupBox_scale_2.setStyleSheet("QGroupBox#groupBox_scale_2 {border:0;}")
         self.groupBox_scale_2.hide()
         ##########################################################
-        self.groupBox_save = QtWidgets.QGroupBox(self.centralwidget)
-        self.groupBox_save.setGeometry(QtCore.QRect(20, 350, 411, 101))
-        self.groupBox_save.setObjectName("groupBox_save")
-        self.frate = QtWidgets.QLabel(self.groupBox_save)
-        self.frate.setGeometry(QtCore.QRect(0, 70, 91, 17))
-        self.frate.setObjectName("frate")
-        self.label_sav = QtWidgets.QLabel(self.groupBox_save)
-        self.label_sav.setGeometry(QtCore.QRect(0, 30, 101, 20))
-        self.label_sav.setObjectName("label_sav")
-        self.File_le = QtWidgets.QLineEdit(self.groupBox_save)
-        self.File_le.setGeometry(QtCore.QRect(230, 70, 113, 20))
-        self.File_le.setObjectName("File_le")
-        self.Save_ok = QtWidgets.QPushButton(self.groupBox_save)
-        self.Save_ok.setGeometry(QtCore.QRect(210, 30, 41, 25))
-        self.Save_ok.setObjectName("Save_ok")
-        self.label_sav_done = QtWidgets.QLabel(self.groupBox_save)
-        self.label_sav_done.setGeometry(QtCore.QRect(320, 30, 61, 21))
-        self.label_sav_done.setObjectName("label_sav_done")
-        self.comboBox_save = QtWidgets.QComboBox(self.groupBox_save)
-        self.comboBox_save.setGeometry(QtCore.QRect(110, 30, 86, 25))
-        self.comboBox_save.setObjectName("comboBox_save")
-        self.comboBox_save.addItem("")
-        self.comboBox_save.addItem("")
-        self.comboBox_save.addItem("")
-        self.comboBox_save.addItem("")
-        self.comboBox_save.addItem("")
-        self.Filen = QtWidgets.QLabel(self.groupBox_save)
-        self.Filen.setGeometry(QtCore.QRect(150, 70, 81, 16))
-        self.Filen.setObjectName("Filen")
-        self.progressBar_save = QtWidgets.QProgressBar(self.groupBox_save)
-        self.progressBar_save.setGeometry(QtCore.QRect(260, 30, 51, 23))
-        #self.progressBar_save.setProperty("value", 24)
-        self.progressBar_save.setObjectName("progressBar_save")
-        self.spinBox_fr = QtWidgets.QSpinBox(self.groupBox_save)
-        self.spinBox_fr.setGeometry(QtCore.QRect(90, 70, 41, 21))
-        self.spinBox_fr.setObjectName("spinBox_fr")
-        self.spinBox_fr.setMinimum(1)
-        self.groupBox_save.setStyleSheet("QGroupBox#groupBox_save {border:0;}")
-        self.groupBox_save.hide()
+        self.Save_movie = QtWidgets.QPushButton(self.centralwidget)
+        self.Save_movie.setGeometry(QtCore.QRect(150, 390, 121, 31))
+        self.Save_movie.hide()
         ##########################################################
         self.s, self.t, self.frames = [], [], []
         self.fname = None
-        self.frames = []
+        self.frames,self.fram = [],[]
         self.min_image, self.uniform_image = None, None
-        self.x, self.y = None, None
+        self.x, self.y,self.i1 = None,None, None
         self.avg, self.mask = None, None
         self.ima1, self.colorm = None, None
         self.date, self.time = None, None
@@ -265,7 +204,7 @@ class Ui_MainWindow(object):
         self.plot = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.plot.setObjectName(u"plot")
         self.plot.setContentsMargins(0, 0, 0, 0)
-        self.figure = plt.figure()
+        self.figure = mp.figure.Figure()
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas,MainWindow)
         self.toolbar.setStyleSheet("QWidget {background-color:grey;}")
@@ -350,24 +289,18 @@ class Ui_MainWindow(object):
         MainWindow.setTabOrder(self.Movie, self.comboBox_scale)
         MainWindow.setTabOrder(self.comboBox_scale, self.MinSlider)
         MainWindow.setTabOrder(self.MinSlider, self.MaxSlider)
-        MainWindow.setTabOrder(self.MaxSlider, self.comboBox_save)
-        MainWindow.setTabOrder(self.comboBox_save, self.Save_ok)
-        MainWindow.setTabOrder(self.Save_ok, self.spinBox_fr)
-        MainWindow.setTabOrder(self.spinBox_fr, self.File_le)
-        MainWindow.setTabOrder(self.File_le, self.Analysis)
+        MainWindow.setTabOrder(self.MaxSlider, self.Analysis)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "SITCoM: SiRGraF Integrated Tool for Coronal dynaMics"))
         self.Average.setText(_translate("MainWindow", "Average intensity Plot"))
         self.Average.clicked.connect(self.fAverage)
-        self.Save_ok.setText(_translate("MainWindow", "OK"))
-        self.Save_ok.clicked.connect(self.Save)
+        self.Save_movie.setText(_translate("MainWindow", "Save Movie"))
+        self.Save_movie.clicked.connect(self.Save)
         self.Min.setText(_translate("MainWindow", "Min Scale :"))
         self.Movie.setText(_translate("MainWindow", "Movie"))
         self.Movie.clicked.connect(self.Mov)
-        self.label_sav_done.setText(_translate("MainWindow", "Done!"))
-        self.label_sav_done.hide()
         self.comboBox_scale.setItemText(0, _translate("MainWindow", "Linear"))
         self.comboBox_scale.setItemText(1, _translate("MainWindow", "Logarithmic"))
         self.comboBox_scale.setItemText(2, _translate("MainWindow", "MinMax"))
@@ -382,7 +315,6 @@ class Ui_MainWindow(object):
         self.Success.setText(_translate("MainWindow", "Success!"))
         self.Success.hide()
         self.Start.setText(_translate("MainWindow", "Start"))
-        self.label_sav.setText(_translate("MainWindow", "Save movie as :"))
         self.Max.setText(_translate("MainWindow", "Max Scale:"))
         self.Uniform.setText(_translate("MainWindow", "Uniform Intensity Image"))
         self.Uniform.clicked.connect(self.fUniform)
@@ -399,13 +331,6 @@ class Ui_MainWindow(object):
         self.Ok2.setText(_translate("MainWindow", "OK"))
         self.Ok2.clicked.connect(self.Scale)
         self.intensity.setText(_translate("MainWindow", "Intensity Scale:"))
-        self.comboBox_save.setItemText(0, _translate("MainWindow", "mp4"))
-        self.comboBox_save.setItemText(1, _translate("MainWindow", "gif"))
-        self.comboBox_save.setItemText(2, _translate("MainWindow", "png"))
-        self.comboBox_save.setItemText(3, _translate("MainWindow", "sav"))
-        self.comboBox_save.setItemText(4, _translate("MainWindow", "fits"))
-        self.frate.setText(_translate("MainWindow", "Frame Rate:"))
-        self.Filen.setText(_translate("MainWindow", "File Name:"))
         self.label_min.setText(_translate("MainWindow", "0     0.25      0.5     0.75     1.0"))
         self.label_max.setText(_translate("MainWindow", "0     0.25      0.5     0.75     1.0"))
         self.label_gamma.setText(_translate("MainWindow", "0     0.25      0.5     0.75     1.0"))
@@ -512,56 +437,18 @@ class Ui_MainWindow(object):
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
         retval = msg.exec_()
     def Save(self):
-        fr=self.spinBox_fr.value()
-        nm=self.File_le.text()
-        fpath=os.path.expanduser('~')
-        self.progressBar_save.show()
-        self.label_sav_done.show()
-        self.label_sav_done.setText('Storing..')
-        for i in range(51):
-            time.sleep(0.1)
-            self.progressBar_save.setValue(i)
-        if self.comboBox_save.currentText()=='mp4':
-          if platform.system()=='Linux':
-            FFwriter = animation.FFMpegWriter(fps=fr)
-            cnm=os.path.join(fpath, nm+".mp4")
-            self.ani.save(cnm, writer = FFwriter,dpi=300)
-          elif platform.system()=='Windows':
-            Pwriter = animation.PillowWriter(fps=fr)
-            cnm=os.path.join(fpath, nm+".gif")
-            self.ani.save(cnm, writer = Pwriter,dpi=300)
-            clip = mpe.VideoFileClip(cnm)
-            clip.write_videofile(os.path.join(fpath,nm+".mp4"))
-        if self.comboBox_save.currentText()=='gif':
-            Pwriter = animation.PillowWriter(fps=fr)
-            cnm=os.path.join(fpath, nm+".gif")
-            self.ani.save(cnm, writer = Pwriter,dpi=300)
-        if self.comboBox_save.currentText()=='png':
-            interval = ZScaleInterval()
-            vmin, vmax = interval.get_limits(self.ima1[0])
-            fpath1=os.path.join(fpath+"/PNG")
-            os.makedirs(fpath1,mode=0o777,exist_ok=True)
-            cnm=os.path.join(fpath1,nm)
-            for i in range(len(self.frames)):
-                plt.imsave(cnm+"-"+str(i)+'.png',self.frames[i],cmap=self.colorm,vmin=-0.1,vmax=0.1,format='png')
-            self.ani.save(cnm, writer="imagemagick",fps=fr)
-            animation.ImageMagickWriter.grab_frame(self.figure)
-        if self.comboBox_save.currentText()=='fits':
-            fpath1=os.path.join(fpath+"/FITS")
-            os.makedirs(fpath1,mode=0o777,exist_ok=True)
-            cnm=os.path.join(fpath1,nm+".fits")
-            self.ani.save(cnm, writer="imagemagick",fps=fr)
-            filenames=sorted(glob.glob(fpath1+'/*.fits'))
-            img=[]
-            for i in range(len(filenames)):
-              f1=fits.getdata(filenames[i])
-              img.append(f1)
-            img=np.array(img)
-            fits.writeto(cnm,img)
-        for i in range(51,101):
-            time.sleep(0.01)
-            self.progressBar_save.setValue(i)
-        self.label_sav_done.setText('Done!')
+        #self.pause_button.click()
+        self.window=QtWidgets.QMainWindow()
+        self.ui = Ui_SaveWindow()
+        self.ui.setupUi(self.window)
+        self.ui.ani=self.ani
+        self.ui.frames=self.frames
+        self.ui.ima1=self.ima1
+        self.ui.colorm=self.colorm
+        self.ui.date=self.date
+        self.ui.time=self.time
+        self.ui.fram=self.fram
+        self.window.show()
     def fEdit(self):
         msg = QtWidgets.QMessageBox()
         msg.setStyleSheet("color:'black';")
@@ -573,7 +460,7 @@ class Ui_MainWindow(object):
         self.fname=self.Browse_le.textChanged
         self.groupBox_image.setEnabled(False)
         self.canvas.figure.clf()
-        self.groupBox_save.hide()
+        self.Save_movie.hide()
         self.groupBox_scale.hide()
         self.canvas.draw_idle()
         #self.Browse_le.setText(self.)
@@ -583,21 +470,21 @@ class Ui_MainWindow(object):
         if self.s==[]:
           pass
         elif self.s[-1]=="Minimum":
-          self.Minimum.click()
+          self.comboBox_scale.setEnabled(False)
         elif self.s[-1]=="Filtered":
           self.Filtered.click()
         elif self.s[-1]=="Uniform":
-          self.Uniform.click()
+          self.comboBox_scale.setEnabled(False)
         elif self.s[-1]=="Final":
-          self.Final.click()
+          self.comboBox_scale.setEnabled(False)
         elif self.s[-1]=="Average":
-          self.Average.click()
+          self.comboBox_scale.setEnabled(False)
         elif self.s[-1]=="Movie":
           self.Movie.click()
     def light(self):
         self.t.append('Light')
         #MainWindow=QtWidgets.QMainWindow()
-        cw=os.path.join(self.sitep,'sitcom/data/white.png')
+        cw=os.path.join(self.sitep,'data','white.png')
         MainWindow.setStyleSheet("QMainWindow{border-image: url("+cw+"); background-repeat:no-repeat; background-position: center;}")
         self.figure.set_facecolor('white')
         mp.rcParams.update({'text.color' : "black",'axes.labelcolor' : "black",'axes.edgecolor':"black",'axes.facecolor':"white",'xtick.color':"black",'ytick.color':"black"})
@@ -618,7 +505,7 @@ class Ui_MainWindow(object):
           self.Movie.click()   
     def dark(self):
         self.t.append('Dark')
-        cw=os.path.join(self.sitep,'sitcom/data/black.png')
+        cw=os.path.join(self.sitep,'data','black.png')
         MainWindow.setStyleSheet("QMainWindow{border-image: url("+cw+"); background-repeat:no-repeat; background-position: center;}QLabel{color:white;}")
         self.figure.patch.set_facecolor('black')
         mp.rcParams.update({'text.color' : "white",'axes.labelcolor' : "white",'axes.edgecolor':"white",'axes.facecolor':"black",'xtick.color':"white",'ytick.color':"white"})
@@ -637,6 +524,9 @@ class Ui_MainWindow(object):
         elif self.s[-1]=="Movie":
           self.Movie.click() 
     def fStart(self):
+      for i in range(0,51):
+            time.sleep(0.001)
+            self.progressBar.setValue(i)
       if self.Browse_le.text()=='':
         msg = QtWidgets.QMessageBox()
         msg.setStyleSheet("color:'black';")
@@ -650,8 +540,8 @@ class Ui_MainWindow(object):
         if any(File.endswith((".fts",".fits",".fit")) for File in os.listdir(self.fname)):
           self.Browse_le.setText(self.fname)
           self.min_image,self.uniform_image,self.ima1,self.mask,self.colorm,self.R_i,self.R_sun,self.x,self.y,self.avg,self.date,self.time=sf.sif(self.fname)
-          for i in range(101):
-            time.sleep(0.01)
+          for i in range(51,101):
+            time.sleep(0.001)
             self.progressBar.setValue(i)
           self.Success.show()
           self.groupBox_image.setEnabled(True)
@@ -680,30 +570,17 @@ class Ui_MainWindow(object):
     def fMinimum(self):
       self.s.append('Minimum')
       self.groupBox_scale.hide()
-      self.groupBox_save.hide()
+      self.Save_movie.hide()
+      self.comboBox_scale.setEnabled(False)
       self.groupBox_scale_2.hide()
       bg1=np.ones(self.min_image.shape)-np.log10(self.min_image)
       bg1[self.mask]=0
       self.figure.clear()
+      interval=ZScaleInterval()
       self.ax=self.canvas.figure.add_subplot(111)
       circ2=pa.Circle((0,0),self.R_i,color='black')
       circ=pa.Circle((0,0),1,color='white',fill=False)
-      i1=None
-      if self.comboBox_scale.currentText()=='Linear':
-        i1=self.ax.imshow(bg1,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-      if self.comboBox_scale.currentText()=='Logarithmic':
-        c = 255/(np.log(1 + np.max(bg1)))
-        log_transformed = c * np.log(1 + bg1)
-        log_transformed = np.array(log_transformed, dtype = np.uint8)
-        i1=self.ax.imshow(log_transformed,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-      if self.comboBox_scale.currentText()=='MinMax':
-        self.groupBox_scale.show()
-        vmin,vmax=self.MinSlider.value()/4,self.MaxSlider.value()/4
-        i1=self.ax.imshow(bg1,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
-      if self.comboBox_scale.currentText()=='Gamma':
-        self.groupBox_scale_2.show()
-        gamma=self.GammaSlider.value()/4
-        i1=self.ax.imshow( np.float_power(bg1, gamma),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
+      i1=self.ax.imshow(bg1,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
       cb=plt.colorbar(i1,ax=self.ax,shrink=0.85,pad=0.01,extend='both')
       self.ax.add_patch(circ2)
       self.ax.add_patch(circ)
@@ -716,7 +593,8 @@ class Ui_MainWindow(object):
     def fFiltered(self):
       self.s.append('Filtered')
       self.groupBox_scale.hide()
-      self.groupBox_save.hide()
+      self.Save_movie.hide()
+      self.comboBox_scale.setEnabled(True)
       self.groupBox_scale_2.hide()
       index=int(len(self.ima1)/2)
       interval=ZScaleInterval()
@@ -729,19 +607,24 @@ class Ui_MainWindow(object):
       i1=None
       if self.comboBox_scale.currentText()=='Linear':
         i1=self.ax.imshow(cv2.medianBlur(self.ima1[index],5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
-      if self.comboBox_scale.currentText()=='Logarithmic':
+      elif self.comboBox_scale.currentText()=='Logarithmic':
         c = 255/(np.log(1 + np.max(cv2.medianBlur(self.ima1[index],5))))
         log_transformed = c * np.log(1 + cv2.medianBlur(self.ima1[index],5))
         log_transformed = np.array(log_transformed, dtype = np.uint8)
         i1=self.ax.imshow(log_transformed,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-      if self.comboBox_scale.currentText()=='MinMax':
+      elif self.comboBox_scale.currentText()=='MinMax':
         self.groupBox_scale.show()
         vmin1,vmax1=self.MinSlider.value()/4,self.MaxSlider.value()/4
         i1=self.ax.imshow(cv2.medianBlur(self.ima1[index],5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin1,vmax=vmax1)
-      if self.comboBox_scale.currentText()=='Gamma':
+      elif self.comboBox_scale.currentText()=='Gamma':
         self.groupBox_scale_2.show()
-        gamma=self.GammaSlider.value()/4
-        i1=self.ax.imshow( cv2.medianBlur((self.ima1[index])**gamma,5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
+        if self.GammaSlider.value()>0:
+            gamma=4/self.GammaSlider.value()
+        else:
+            gamma=0
+        arr=np.float_power(self.ima1[index],gamma)
+        vmin,vmax=interval.get_limits(arr)
+        i1=self.ax.imshow(arr,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
       cb=self.figure.colorbar(i1,ax=self.ax,shrink=0.85,pad=0.01,extend='both')
       cb.ax.set_ylim(bottom=0)
       self.ax.set_facecolor("black")
@@ -758,7 +641,8 @@ class Ui_MainWindow(object):
     def fUniform(self):
       self.s.append('Uniform')
       self.groupBox_scale.hide()
-      self.groupBox_save.hide()
+      self.Save_movie.hide()
+      self.comboBox_scale.setEnabled(False)
       self.groupBox_scale_2.hide()
       bg1=np.ones(self.uniform_image.shape)-np.log10(self.uniform_image)
       bg1[self.mask]=0
@@ -767,22 +651,7 @@ class Ui_MainWindow(object):
       self.ax=self.canvas.figure.add_subplot(111)
       circ2=pa.Circle((0,0),self.R_i,color='black')
       circ=pa.Circle((0,0),1,color='white',fill=False)
-      i1=None
-      if self.comboBox_scale.currentText()=='Linear':
-        i1=self.ax.imshow(bg1,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-      if self.comboBox_scale.currentText()=='Logarithmic':
-        c = 255/(np.log(1 + np.max(bg1)))
-        log_transformed = c * np.log(1 + bg1)
-        log_transformed = np.array(log_transformed, dtype = np.uint8)
-        i1=self.ax.imshow(log_transformed,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-      if self.comboBox_scale.currentText()=='MinMax':
-        self.groupBox_scale.show()
-        vmin,vmax=self.MinSlider.value()/4,self.MaxSlider.value()/4
-        i1=self.ax.imshow(bg1,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
-      if self.comboBox_scale.currentText()=='Gamma':
-        self.groupBox_scale_2.show()
-        gamma=self.GammaSlider.value()/4
-        i1=self.ax.imshow( np.float_power(bg1, gamma),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
+      i1=self.ax.imshow(bg1,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
       cb=plt.colorbar(i1,ax=self.ax,shrink=0.85,pad=0.01,extend='both')
       self.ax.add_patch(circ2)
       self.ax.add_patch(circ)
@@ -795,8 +664,9 @@ class Ui_MainWindow(object):
     def fAverage(self):
       self.s.append('Average')
       self.groupBox_scale.hide()
-      self.groupBox_save.hide()
+      self.Save_movie.hide()
       self.groupBox_scale_2.hide()
+      self.comboBox_scale.setEnabled(False)
       g=np.log10(self.avg)
       r=np.round(np.mean(g[np.where((np.isnan(g)==False) & (g!=np.inf))]))
       self.figure.clear()
@@ -810,7 +680,8 @@ class Ui_MainWindow(object):
     def fFinal(self):
       self.s.append('Final')
       self.groupBox_scale.hide()
-      self.groupBox_save.hide()
+      self.Save_movie.hide()
+      self.comboBox_scale.setEnabled(False)
       self.groupBox_scale_2.hide()
       g=np.log10(self.avg)
       r=np.round(np.mean(g[np.where((np.isnan(g)==False) & (g!=np.inf))]))
@@ -871,115 +742,95 @@ class Ui_MainWindow(object):
       self.play_button.setEnabled(True)
       self.pause_button.setEnabled(True)
       self.groupBox_scale.hide()
-      self.groupBox_save.show()
+      self.comboBox_scale.setEnabled(True)
       self.groupBox_scale_2.hide()
+      self.Save_movie.show()
       self.figure.clear()
-      self.frames = []
-      fr = self.spinBox_fr.value()
-      nm = self.File_le.text()
-      fpath = os.path.expanduser('~')
+      self.frames=[]
       self.ima=np.copy(self.ima1)
       interval=ZScaleInterval()
       for i in range(len(self.ima1)):
-          if self.comboBox_scale.currentText() == 'Linear':
-              self.frames.append(cv2.medianBlur(self.ima1[i], 5))
-          elif self.comboBox_scale.currentText() == 'Logarithmic':
-              c = 255 / (np.log(1 + np.max(cv2.medianBlur(self.ima1[i], 5))))
-              log_transformed = c * np.log(1 + cv2.medianBlur(self.ima1[i], 5))
-              self.frames.append(np.array(log_transformed, dtype=np.uint8))
-          elif self.comboBox_scale.currentText() == 'MinMax':
-              self.frames.append(cv2.medianBlur(self.ima1[i], 5))
-              vmin1, vmax1 = self.MinSlider.value() / 4, self.MaxSlider.value() / 4
-          elif self.comboBox_scale.currentText() == 'Gamma':
-              gamma = self.GammaSlider.value() / 4
-              arr = np.float_power(cv2.medianBlur(self.ima1[i],5), gamma)
           self.ima[i][np.where(self.ima[i]<0)]=0
-      ax=self.canvas.figure.add_subplot(111)
+      #tx=self.ax.set_title('Date: '+self.date+' Time: '+self.time[0])
+      self.figure.clear()
+      ax=self.figure.add_subplot(111)
       div = make_axes_locatable(ax)
       cax = div.append_axes('right', '5%', '5%')
       circ2=pa.Circle((0,0),self.R_i,color='black')
       circ=pa.Circle((0,0),1,color='white',fill=False)
-      #self.ima1[np.where(self.ima1<0)]=0
-      #tx=self.ax.set_title('Date: '+self.date+' Time: '+self.time[0])
-      i1=None
-      if self.comboBox_scale.currentText()=='Linear':
-        vmin,vmax=interval.get_limits(self.ima[0])
-        i1=ax.imshow(cv2.medianBlur(self.ima[0],5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
-      if self.comboBox_scale.currentText()=='Logarithmic':
-        c = 255/(np.log10(1 + np.max(cv2.medianBlur(self.ima1[0],5))))
-        log_transformed = c * np.log10(1 + cv2.medianBlur(self.ima1[0],5))
-        log_transformed = np.array(log_transformed, dtype = np.uint8)
-        i1=ax.imshow(log_transformed,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-      vmin1,vmax1=self.MinSlider.value()/4,self.MaxSlider.value()/4
-      if self.comboBox_scale.currentText()=='MinMax':
-        self.groupBox_scale.show()
-        i1=ax.imshow(cv2.medianBlur(self.ima1[0],5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin1,vmax=vmax1)
-      if self.comboBox_scale.currentText()=='Gamma':
-        self.groupBox_scale_2.show()
-        gamma=self.GammaSlider.value()/4
-        i1=ax.imshow(np.float_power(cv2.medianBlur(self.ima1[0],5),gamma),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-      cb=self.figure.colorbar(i1,cax=cax,extend='both')
-      cb.ax.set_ylim(bottom=0)
-      patch = pa.Circle((0,0), radius=np.max(self.y),transform=ax.transData)
-      i1.set_clip_path(patch)
       ax.add_patch(circ2)
       ax.add_patch(circ)
       ax.set_facecolor("black")
-      cb.set_label('Normalized Intensity')
       ax.set_xlabel('Solar X (R$_{\odot}$)')
       ax.set_ylabel('Solar Y (R$_{\odot}$)')
+      vmin,vmax=interval.get_limits(self.ima1[i])
+      self.i1=ax.imshow(cv2.medianBlur(self.ima[0],5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
+      cb=self.figure.colorbar(self.i1,cax=cax,extend='both',format='')
+      cb.set_ticks([])
+      cb.set_label('Normalized Intensity')
+      patch = pa.Circle((0,0), radius=np.max(self.y),transform=ax.transData)
+      self.i1.set_clip_path(patch)
+      self.fram=[]
       def animate(i):
         if self.comboBox_scale.currentText()=='Linear':
           vmin,vmax=interval.get_limits(self.ima1[i])
-          i1=ax.imshow(cv2.medianBlur(self.ima[i],5),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
-          #i1.set_data(arr)
-          #i1.set_clim(vmin,vmax)
+          self.i1.set_data(cv2.medianBlur(self.ima1[i],5))
+          self.i1.set_clim(vmin,vmax)
+          self.fram.append(cv2.medianBlur(self.ima1[i],5))          
         elif self.comboBox_scale.currentText()=='Logarithmic':
           c = 255/(np.log(1 + np.max(cv2.medianBlur(self.ima1[i],5))))
           log_transformed = c * np.log(1 + cv2.medianBlur(self.ima1[i],5))
-          i1=ax.imshow(np.array(log_transformed, dtype = np.uint8),extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
-          #i1.set_data(arr)
+          arr=np.array(log_transformed, dtype = np.uint8)
+          vmin,vmax=interval.get_limits(arr)  
+          self.i1=ax.imshow(arr,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
+          self.fram.append(arr)
         elif self.comboBox_scale.currentText()=='MinMax':
+          self.groupBox_scale.show()
+          self.groupBox_scale_2.hide()
           arr=cv2.medianBlur(self.ima1[i],5)
-          #i1.set_data(arr)
           vmin1,vmax1=self.MinSlider.value()/4,self.MaxSlider.value()/4
-          i1=ax.imshow(arr,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin1,vmax=vmax1)
-          #i1.set_clim(vmin1,vmax1)
+          arr = cv2.normalize(arr, None, alpha=vmin1, beta=vmax1, norm_type=cv2.NORM_MINMAX)
+          self.i1=ax.imshow(arr,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin1,vmax=vmax1)
+          #self.i1.set_clim(vmin1,vmax1)
+          self.fram.append(arr)
         elif self.comboBox_scale.currentText()=='Gamma':
-          gamma=self.GammaSlider.value()/4
-          arr=np.float_power(cv2.medianBlur(self.ima1[i],5),gamma)
-          #i1.set_data(arr)
-          i1=ax.imshow(arr,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm)
+          self.groupBox_scale.hide()
+          self.groupBox_scale_2.show()
+          if self.GammaSlider.value()>0:
+            gamma=4/self.GammaSlider.value()
+          else:
+            gamma=0
+          img = np.float32(self.ima1[i])
+          arrg=np.float_power(img,gamma)
+          #arr_norm = cv2.normalize(arr, None, 0, 1, cv2.NORM_MINMAX)
+          vmin,vmax=interval.get_limits(arrg)        
+          self.i1=ax.imshow(arrg,extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],cmap=self.colorm,vmin=vmin,vmax=vmax)
+          self.fram.append(arrg)
         ax.set_title('Date: ' + self.date + ' Time: ' + self.time[i])
         ax.set_facecolor("black")
         patch = pa.Circle((0,0), radius=np.max(self.y),transform=ax.transData)
-        i1.set_clip_path(patch)
-        return ax
-
-      self.ani = animation.FuncAnimation(self.figure, animate, frames=len(self.ima1))
+        self.i1.set_clip_path(patch)   
+        im=self.figure.canvas.renderer.buffer_rgba()
+        self.frames.append(np.array(im))
+        return self.i1,
+      
+      self.ani = animation.FuncAnimation(self.canvas.figure, animate,frames=len(self.ima1),interval=40)
       self.canvas.draw()
       self.canvas.figure.tight_layout()
       plt.tight_layout()
+      
     def tpause(self):
       self.ani.event_source.stop()
     def tplay(self):
       self.ani.event_source.start()
-
-
- 
-
+      
+      
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    conda_env=os.environ.get('CONDA_DEFAULT_ENV')
-    if conda_env:
-       cnpath=os.path.join(os.environ['CONDA_PREFIX'],'lib','python{}'.format(sys.version[:3]),'site-packages')
-       if os.path.exists(cnpath):
-           site_packages_path = cnpath
-    else:
-       site_packages_path = site.getusersitepackages()
-    cl=os.path.join(site_packages_path,'sitcom/load/sitcom.gif')
+    current_path=os.path.dirname(os.path.realpath(__file__))
+    cl=os.path.join(current_path,'load','sitcom.gif')
     movie=QtGui.QMovie(cl)
-    cf=os.path.join(site_packages_path,'sitcom/font/lato/Lato-Semibold.ttf')
+    cf=os.path.join(current_path,'font','lato','Lato-Semibold.ttf')
     QtGui.QFontDatabase.addApplicationFont(cf)
     font = QtGui.QFont('Lato-SemiBold', 10)
     font.setWeight(50)
@@ -987,7 +838,7 @@ if __name__ == "__main__":
     splash.show()
     splash.movie.start()
     start = time.time()
-    while movie.state() == QtGui.QMovie.Running and time.time() < start + 4:
+    while movie.state() == QtGui.QMovie.Running and time.time() < start + 2:
         app.processEvents()
     MainWindow = QtWidgets.QMainWindow()
     splash.finish(MainWindow)

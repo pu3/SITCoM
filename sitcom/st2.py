@@ -9,17 +9,10 @@ class Ui_SWindow(object):
         SWindow.setFixedHeight(442)
         self.centralwidget = QtWidgets.QWidget(SWindow)
         self.centralwidget.setObjectName("centralwidget")
-        site_packages_path=None
-        conda_env=os.environ.get('CONDA_DEFAULT_ENV')
-        if conda_env:
-              cnpath=os.path.join(os.environ['CONDA_PREFIX'],'lib','python{}'.format(sys.version[:3]),'site-packages')
-              if os.path.exists(cnpath):
-                 site_packages_path = cnpath
-        else:
-              site_packages_path = site.getusersitepackages()
+        current_path=os.path.dirname(os.path.realpath(__file__))
         self.horizontalFrame = QtWidgets.QFrame(self.centralwidget)
         self.horizontalFrame.setGeometry(QtCore.QRect(10, 10, 571, 331))
-        cw=os.path.join(site_packages_path,'sitcom/data/Sine_curve.png')
+        cw=os.path.join(current_path,'data','Sine_curve.png')
         self.horizontalFrame.setStyleSheet("QFrame{border-image: url("+cw+"); background-repeat:no-repeat; background-position: center;}")
         self.horizontalFrame.setObjectName("horizontalFrame")
         self.diagram = QtWidgets.QHBoxLayout(self.horizontalFrame)
