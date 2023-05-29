@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     
 setup(
     name='sitcom',
-    version='1.4.1',
+    version='1.5.0',
     packages=['sitcom'],
     url='https://github.com/pu3/SITCoM',
     license='LICENSE',
