@@ -12,7 +12,15 @@ For Linux users, existence of the "xcb" library is essential. That can be instal
 ```
 sudo apt-get install libxcb-xinerama0
 ```
-
+If installation issues persist, following changes can be made:
+1. Uninstall opencv
+   ```
+   pip uninstall opencv-python
+   ```
+3. Install opencv-headless
+   ```
+   pip install opencv-python-headless
+   ```
 ### Usage
 
 The `sitcom` package currently can be used by typing the following in the terminal:
